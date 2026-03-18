@@ -32,8 +32,8 @@ for item in data:
         print(f"Missing key in data item: {e}")
 
 # ---------------- Config ----------------
-PORTS = "11434"
-MAX_WORKERS = 24
+PORTS = "80"
+MAX_WORKERS = 8
 RETRIES = 3
 CSV_FILE = "nmap_results.csv"
 STATE_FILE = "state.json"
