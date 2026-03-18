@@ -40,3 +40,4 @@ Thumbs.db
 *.csv
 .venv
 *.lock
+*.sqlite3*

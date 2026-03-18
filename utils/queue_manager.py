@@ -1,0 +1,67 @@
+import asyncio
+from typing import Optional, Dict, Callable, Any
+from loguru import logger
+
+
+class QueueManager:
+    """Manages scan queue with FIFO processing"""
+
+    def __init__(self):
+        self.queue: asyncio.Queue = asyncio.Queue()
+        self.current_task: Optional[str] = None
+        self.is_running = False
+        self.task_callbacks: Dict[str, Callable] = {}
+
+    async def enqueue(self, scan_id: str, callback: Callable) -> None:
+        """Enqueue a scan with callback function"""
+        await self.queue.put((scan_id, callback))
+        self.task_callbacks[scan_id] = callback
+        logger.info(f"Scan {scan_id} enqueued")
+
+    async def process(self) -> None:
+        """Process queue items sequentially"""
+        if self.is_running:
+            logger.info("Queue processor already running")
+            return
+
+        self.is_running = True
+        logger.info("Queue processor started")
+
+        try:
+            while True:
+                scan_id = None
+                try:
+                    scan_id, callback = await asyncio.wait_for(
+                        self.queue.get(), timeout=1.0
+                    )
+                    self.current_task = scan_id
+                    logger.info(f"Processing scan {scan_id}")
+
+                    await callback()
+
+                    logger.info(f"Completed scan {scan_id}")
+                except asyncio.TimeoutError:
+                    continue
+                finally:
+                    self.current_task = None
+                    if scan_id and scan_id in self.task_callbacks:
+                        del self.task_callbacks[scan_id]
+        except Exception as e:
+            logger.error(f"Queue processor error: {e}")
+            self.is_running = False
+
+    def is_processing(self, scan_id: str) -> bool:
+        """Check if a scan is currently being processed"""
+        return self.current_task == scan_id
+
+    def is_queued(self, scan_id: str) -> bool:
+        """Check if a scan is in the queue"""
+        return scan_id in self.task_callbacks
+
+    def queue_size(self) -> int:
+        """Get current queue size"""
+        return self.queue.qsize()
+
+
+# Global queue manager instance
+scan_queue = QueueManager()
