@@ -77,6 +77,63 @@ function setPreset(t) {
   document.getElementById('ports').value = m[t] || '';
 }
 
+/* ─── IMPORT CSV/JSON ────────────────────────────– */
+function handleImport(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const content = ev.target.result.trim();
+      let n = 0;
+
+      // Try JSON format first
+      if (content.startsWith('[')) {
+        try {
+          const ranges = JSON.parse(content);
+          if (Array.isArray(ranges)) {
+            ranges.forEach(range => {
+              const [start, end] = range.split('-').map(v => v.trim());
+              if (start && end) {
+                addIPRow(start, end);
+                n++;
+              }
+            });
+            document.getElementById('importFeedback').textContent = `✓ Imported ${n} range${n !== 1 ? 's' : ''} from "${file.name}" (JSON)`;
+            e.target.value = '';
+            return;
+          }
+        } catch (jsonErr) {
+          // Fall through to CSV parsing
+        }
+      }
+
+      // Parse as CSV
+      const lines = content.split('\n').filter(l => l.trim());
+      lines.forEach(line => {
+        const [s, end] = line.split(',').map(v => v.trim());
+        if (s && end) {
+          addIPRow(s, end);
+          n++;
+        }
+      });
+
+      if (n > 0) {
+        document.getElementById('importFeedback').textContent = `✓ Imported ${n} range${n !== 1 ? 's' : ''} from "${file.name}" (CSV)`;
+      } else {
+        document.getElementById('importFeedback').textContent = '✗ No valid ranges found in file';
+        document.getElementById('importFeedback').style.color = 'var(--red)';
+      }
+    } catch (err) {
+      document.getElementById('importFeedback').textContent = '✗ Error reading file: ' + err.message;
+      document.getElementById('importFeedback').style.color = 'var(--red)';
+    }
+    e.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
 /* ─── LOAD SCAN HISTORY ──────────────────────────– */
 async function loadScanHistory() {
   try {
