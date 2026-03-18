@@ -3,8 +3,11 @@ import sys
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from tortoise.contrib.fastapi import register_tortoise
 from loguru import logger
+from pathlib import Path
 
 from routers.scan_router import router as scan_router
 from utils.queue_manager import scan_queue
@@ -53,6 +56,17 @@ register_tortoise(
 
 # Include routers
 app.include_router(scan_router)
+
+# Mount static files
+static_path = Path(__file__).parent / "static"
+if static_path.exists():
+    app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
+
+
+@app.get("/")
+async def root():
+    """Serve index.html"""
+    return FileResponse("templates/index.html", media_type="text/html")
 
 
 @app.get("/health")
