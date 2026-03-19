@@ -15,8 +15,8 @@ dev:
 
 run:
 	uv sync
-	uv run main.py
-	
+	uv run main.py --port 18681 --host 0.0.0.0
+
 clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 	find . -type f -name "*.pyc" -delete
