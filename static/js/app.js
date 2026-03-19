@@ -2,11 +2,11 @@ import { applyTheme, toggleTheme } from './theme.js';
 import { loadScanHistory } from './history.js';
 import {
   checkURLParams,
-  closeLaunchModal,
+  closeLaunchPanel,
   exportCSV,
   loadScan,
   newScan,
-  openLaunchModal,
+  openLaunchPanel,
   resetAll,
   startScan,
   stopScan,
@@ -19,8 +19,8 @@ window.resetAll = resetAll;
 window.exportCSV = exportCSV;
 window.newScan = newScan;
 window.loadScan = loadScan;
-window.openLaunchModal = openLaunchModal;
-window.closeLaunchModal = closeLaunchModal;
+window.openLaunchPanel = openLaunchPanel;
+window.closeLaunchPanel = closeLaunchPanel;
 
 document.addEventListener('DOMContentLoaded', async () => {
   applyTheme();

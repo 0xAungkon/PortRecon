@@ -684,38 +684,46 @@ code { font-family: 'JetBrains Mono', monospace; font-size: .9em; background: va
   font-size: 13px;
 }
 
-.modal-overlay {
+.launch-panel {
   position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.35);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal-card {
-  width: min(560px, calc(100vw - 32px));
+  top: 0;
+  right: 0;
+  width: 380px;
+  height: 100vh;
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: var(--shadow-md);
+  border-left: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.3s ease-out;
 }
 
-.modal-header {
+.launch-panel.hidden {
+  transform: translateX(100%);
+  pointer-events: none;
+}
+
+.launch-panel:not(.hidden) {
+  transform: translateX(0);
+}
+
+.launch-panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 18px;
+  padding: 16px 18px;
   border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
 }
 
-.modal-title {
+.launch-panel-title {
   font-size: 15px;
   font-weight: 700;
 }
 
-.modal-close {
+.launch-panel-close {
   width: 28px;
   height: 28px;
   border-radius: 7px;
@@ -724,30 +732,38 @@ code { font-family: 'JetBrains Mono', monospace; font-size: .9em; background: va
   color: var(--tx-secondary);
   font-size: 18px;
   line-height: 1;
+  cursor: pointer;
 }
 
-.modal-close:hover {
+.launch-panel-close:hover {
   background: var(--surface-alt);
 }
 
-.modal-body {
+.launch-panel-body {
   padding: 16px 18px;
   display: flex;
   flex-direction: column;
   gap: 14px;
+  overflow-y: auto;
+  flex: 1;
 }
 
-.modal-field {
+.launch-panel-field {
   display: flex;
   flex-direction: column;
 }
 
-.modal-footer {
+.launch-panel-field input {
+  margin-top: 6px;
+}
+
+.launch-panel-footer {
   padding: 14px 18px;
   border-top: 1px solid var(--border);
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+  flex-shrink: 0;
 }
 
 /* ─── RESULTS TEXT VIEW ──────────────────────────– */

@@ -94,12 +94,22 @@ export async function loadScan(id) {
 export function checkURLParams() {
   const params = new URLSearchParams(window.location.search);
   const uuid = params.get('uuid');
-  if (!uuid) return;
+  if (!uuid) {
+    showConfigView();
+    showResultsTableView();
+    openLaunchPanel();
+    return;
+  }
 
   const scan = state.scanHistory.find(s => s.id === uuid);
   if (scan) {
     loadScan(uuid);
+    return;
   }
+
+  showConfigView();
+  showResultsTableView();
+  openLaunchPanel();
 }
 
 export function newScan() {
@@ -110,21 +120,29 @@ export function newScan() {
   showConfigView();
   showResultsTableView();
   resetAll(false);
-  openLaunchModal();
+  openLaunchPanel();
 }
 
-export function openLaunchModal() {
-  const modal = document.getElementById('launchModal');
-  if (!modal) return;
-  modal.classList.remove('hidden');
+export function openLaunchPanel() {
+  const panel = document.getElementById('launchPanel');
+  if (!panel) return;
+  panel.classList.remove('hidden');
   document.getElementById('modalError').textContent = '';
 }
 
-export function closeLaunchModal(event = null) {
-  if (event && event.target && event.target.id !== 'launchModal') return;
-  const modal = document.getElementById('launchModal');
-  if (!modal) return;
-  modal.classList.add('hidden');
+export function closeLaunchPanel() {
+  const panel = document.getElementById('launchPanel');
+  if (!panel) return;
+  panel.classList.add('hidden');
+}
+
+function resetLaunchForm() {
+  document.getElementById('launchName').value = '';
+  document.getElementById('launchFile').value = '';
+  document.getElementById('launchPorts').value = '22,80,443,3306,8080,3389';
+  document.getElementById('launchWorkers').value = '10';
+  document.getElementById('launchRetries').value = '3';
+  document.getElementById('modalError').textContent = '';
 }
 
 export async function startScan() {
@@ -198,7 +216,8 @@ export async function startScan() {
 
     await loadScanHistory();
     setActiveSidebar(scanId);
-    closeLaunchModal();
+    closeLaunchPanel();
+    resetLaunchForm();
 
     document.getElementById('tbTitle').textContent = name;
     document.getElementById('tbMeta').textContent = 'Scan queued...';
