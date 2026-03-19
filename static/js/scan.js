@@ -1,6 +1,5 @@
 import { API_BASE } from './config.js';
 import { state } from './state.js';
-import { getIPRanges } from './ipRanges.js';
 import { loadScanHistory, setActiveSidebar, setSidebarDot } from './history.js';
 import {
   renderResults,
@@ -111,17 +110,33 @@ export function newScan() {
   showConfigView();
   showResultsTableView();
   resetAll(false);
+  openLaunchModal();
+}
+
+export function openLaunchModal() {
+  const modal = document.getElementById('launchModal');
+  if (!modal) return;
+  modal.classList.remove('hidden');
+  document.getElementById('modalError').textContent = '';
+}
+
+export function closeLaunchModal(event = null) {
+  if (event && event.target && event.target.id !== 'launchModal') return;
+  const modal = document.getElementById('launchModal');
+  if (!modal) return;
+  modal.classList.add('hidden');
 }
 
 export async function startScan() {
-  const ranges = getIPRanges();
-  const ports = document.getElementById('ports').value.trim();
-  const name = document.getElementById('scanName').value.trim() || 'Unnamed Scan';
-  const workers = parseInt(document.getElementById('workers').value, 10) || 16;
-  const retries = parseInt(document.getElementById('retries').value, 10) || 3;
+  const name = document.getElementById('launchName').value.trim() || 'Unnamed Scan';
+  const fileInput = document.getElementById('launchFile');
+  const ipFile = fileInput?.files?.[0];
+  const ports = document.getElementById('launchPorts').value.trim();
+  const workers = parseInt(document.getElementById('launchWorkers').value, 10) || 10;
+  const retries = parseInt(document.getElementById('launchRetries').value, 10) || 3;
 
-  if (!ranges.length) {
-    showFieldError('Add at least one IP range before starting.');
+  if (!ipFile) {
+    showFieldError('Select a JSON/CSV file with IP ranges.');
     return;
   }
 
@@ -140,31 +155,36 @@ export async function startScan() {
   document.getElementById('progressBar').classList.add('active');
   document.getElementById('tbMeta').textContent = 'Submitting scan...';
 
-  const rangesStr = ranges.map(r => `${r.start}-${r.end}`).join(', ');
   showScanningView();
   showResultsTableView();
   document.getElementById('detailName').textContent = name;
-  document.getElementById('detailRanges').textContent = rangesStr;
+  document.getElementById('detailInputFile').textContent = ipFile.name;
   document.getElementById('detailPorts').textContent = ports;
   document.getElementById('detailStatus').textContent = 'Pending';
 
   try {
-    const payload = {
-      name,
-      ip_range: ranges.map(r => `${r.start}-${r.end}`).join(','),
-      ports,
-      workers,
-      retries,
-    };
+    const payload = new FormData();
+    payload.append('name', name);
+    payload.append('ip_file', ipFile);
+    payload.append('ports', ports);
+    payload.append('workers', String(workers));
+    payload.append('retries', String(retries));
 
     const response = await fetch(`${API_BASE}/scan`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: payload,
     });
 
     if (!response.ok) {
-      showFieldError('Failed to start scan. Try again.');
+      let errorMessage = 'Failed to start scan. Try again.';
+      try {
+        const body = await response.json();
+        if (body?.detail) errorMessage = body.detail;
+      } catch {
+        // Ignore parse errors and keep fallback message
+      }
+
+      showFieldError(errorMessage);
       state.scanning = false;
       document.getElementById('startBtn').disabled = false;
       document.getElementById('stopBtn').classList.add('hidden');
@@ -178,6 +198,7 @@ export async function startScan() {
 
     await loadScanHistory();
     setActiveSidebar(scanId);
+    closeLaunchModal();
 
     document.getElementById('tbTitle').textContent = name;
     document.getElementById('tbMeta').textContent = 'Scan queued...';
@@ -223,7 +244,13 @@ export function resetAll(clearName = true) {
 
   state.results = [];
 
-  if (clearName) document.getElementById('scanName').value = '';
+  if (clearName) {
+    document.getElementById('launchName').value = '';
+    document.getElementById('launchPorts').value = '22,80,443,3306,8080,3389';
+    document.getElementById('launchWorkers').value = '10';
+    document.getElementById('launchRetries').value = '3';
+    document.getElementById('launchFile').value = '';
+  }
 
   document.getElementById('resultCount').textContent = '0';
   document.getElementById('statScanned').textContent = '0';
@@ -236,7 +263,7 @@ export function resetAll(clearName = true) {
   document.getElementById('progressLabel').textContent = 'Ready to scan';
   document.getElementById('progressMeta').textContent = '—';
   document.getElementById('currentTarget').textContent = '—';
-  document.getElementById('importFeedback').textContent = '';
+  document.getElementById('modalError').textContent = '';
   document.getElementById('startBtn').disabled = false;
   document.getElementById('stopBtn').classList.add('hidden');
 

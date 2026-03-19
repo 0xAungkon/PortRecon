@@ -73,9 +73,9 @@
     </div>
     <!-- Action Controls (shown during config, hidden during scan) -->
     <div id="actionControls" class="topbar-actions">
-      <button class="btn-primary" id="startBtn" onclick="startScan()">
+      <button class="btn-primary" id="startBtn" onclick="openLaunchModal()">
         <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-        Start Scan
+        Launch Scan
       </button>
       <button class="btn-danger hidden" id="stopBtn" onclick="stopScan()">
         <svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
@@ -102,83 +102,12 @@
       <div class="card-body">
         <!-- Configuration View (hidden during scan) -->
         <div id="configView">
-          <!-- Scan Name -->
-          <div style="margin-bottom:20px;">
-            <label class="field-lbl" for="scanName">Scan Name</label>
-            <input type="text" id="scanName"
-              placeholder="e.g. Production Network — Weekly Audit"
-              style="max-width:520px;" />
-            <div class="field-hint">Give this scan a descriptive name to find it later in history.</div>
-          </div>
-
-          <hr class="sep" />
-
-          <!-- IP Ranges -->
-          <div style="margin-bottom:20px;">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-              <div>
-                <label class="field-lbl" style="margin:0;">IP Ranges</label>
-                <div class="field-hint" style="margin-top:2px;">Define one or more IP address ranges to scan.</div>
-              </div>
-            </div>
-
-            <div class="ip-table-scroll" id="ipTableWrap">
-              <div class="ip-table">
-                <div class="ip-table-head">
-                  <span>Start IP</span><span>End IP</span><span></span>
-                </div>
-                <div id="ipRangeRows"></div>
-              </div>
-            </div>
-            <button class="add-row-btn" onclick="addIPRow()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><path d="M12 5v14M5 12h14"/></svg>
-              Add another range
+          <div class="launch-intro">
+            <div class="launch-intro-title">Launch scans from file upload</div>
+            <div class="launch-intro-sub">Upload a JSON/CSV range file in the launch modal. IP ranges are parsed only on the backend.</div>
+            <button class="btn-primary" onclick="openLaunchModal()" style="margin-top:14px;">
+              Open Launch Modal
             </button>
-
-            <div class="divider-or">or bulk import</div>
-
-            <div class="import-zone">
-              <div>
-                <div class="import-info-title">Import from CSV/JSON file</div>
-                <div class="import-info-sub">CSV: one row per range as <code>start_ip,end_ip</code> · JSON: array of ranges as <code>["start-end", ...]</code></div>
-              </div>
-              <label class="import-label">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                Choose file
-                <input type="file" accept=".csv,.txt,.json" class="hidden" id="importFile" onchange="handleImport(event)"/>
-              </label>
-            </div>
-            <div class="import-feedback" id="importFeedback"></div>
-          </div>
-
-          <hr class="sep" />
-
-          <!-- Ports & Params -->
-          <div class="grid-2">
-            <div class="col-2">
-              <label class="field-lbl" for="ports">Target Ports</label>
-              <input type="text" id="ports" value="22,80,443,3306,8080,3389" placeholder="22,80,443,8080"/>
-              <div class="preset-pills">
-                <button class="preset-pill" onclick="setPreset('web')">🌐 Web</button>
-                <button class="preset-pill" onclick="setPreset('db')">🗄 Database</button>
-                <button class="preset-pill" onclick="setPreset('remote')">🔑 Remote Access</button>
-                <button class="preset-pill" onclick="setPreset('all')">📋 All Common</button>
-              </div>
-            </div>
-            <div>
-              <label class="field-lbl" for="workers">
-                Workers
-                <span class="row-meta" style="font-weight:400;margin-left:4px;">(parallel threads)</span>
-              </label>
-              <input type="number" id="workers" value="50" min="1" max="500"/>
-            </div>
-            <div>
-              <label class="field-lbl" for="retries">
-                Retries
-                <span class="row-meta" style="font-weight:400;margin-left:4px;">(per host)</span>
-              </label>
-              <input type="number" id="retries" value="2" min="0" max="10"/>
-            </div>
           </div>
         </div>
 
@@ -194,8 +123,8 @@
               <div class="detail-value" id="detailStatus">—</div>
             </div>
             <div class="detail-section">
-              <div class="detail-label">IP Ranges:</div>
-              <div class="detail-value" id="detailRanges">—</div>
+              <div class="detail-label">Input File:</div>
+              <div class="detail-value" id="detailInputFile">—</div>
             </div>
             <div class="detail-section">
               <div class="detail-label">Target Ports:</div>
@@ -305,6 +234,44 @@
 
   </div><!-- /content -->
 </main>
+
+<div id="launchModal" class="modal-overlay hidden" onclick="closeLaunchModal(event)">
+  <div class="modal-card" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-title">Launch Scan</div>
+      <button class="modal-close" onclick="closeLaunchModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-field">
+        <label class="field-lbl" for="launchName">Name</label>
+        <input type="text" id="launchName" placeholder="e.g. Weekly DC scan" />
+      </div>
+      <div class="modal-field">
+        <label class="field-lbl" for="launchFile">IP Range File (JSON/CSV)</label>
+        <input type="file" id="launchFile" accept=".json,.csv,.txt" />
+      </div>
+      <div class="modal-field">
+        <label class="field-lbl" for="launchPorts">Ports</label>
+        <input type="text" id="launchPorts" value="22,80,443,3306,8080,3389" placeholder="22,80,443" />
+      </div>
+      <div class="grid-2">
+        <div>
+          <label class="field-lbl" for="launchWorkers">Workers</label>
+          <input type="number" id="launchWorkers" value="10" min="1" max="64" />
+        </div>
+        <div>
+          <label class="field-lbl" for="launchRetries">Retries</label>
+          <input type="number" id="launchRetries" value="3" min="1" max="10" />
+        </div>
+      </div>
+      <div class="import-feedback" id="modalError"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeLaunchModal()">Cancel</button>
+      <button class="btn-primary" id="modalStartBtn" onclick="startScan()">Start Scan</button>
+    </div>
+  </div>
+</div>
 
 <script type="module" src="/static/js/app.js"></script>
 </body>

@@ -2,10 +2,13 @@ import nmap
 import asyncio
 import csv
 import ipaddress
+import io
+import json
 import time
 from datetime import datetime
 from typing import List, Tuple
 from loguru import logger
+from fastapi import UploadFile
 from models.scan import Scan, ScanStatus
 
 
@@ -52,6 +55,90 @@ async def get_targets_from_range(ip_range: str) -> List[str]:
             raise ValueError(f"Invalid IP range '{range_str}': {e}")
     
     return targets
+
+
+def _validate_range_pair(start_ip: str, end_ip: str) -> str:
+    ipaddress.ip_address(start_ip)
+    ipaddress.ip_address(end_ip)
+    return f"{start_ip}-{end_ip}"
+
+
+def _parse_json_ranges(content: str) -> List[str]:
+    payload = json.loads(content)
+    entries = payload.get("ranges", []) if isinstance(payload, dict) else payload
+    if not isinstance(entries, list):
+        raise ValueError("JSON input must be a list of ranges or an object with a 'ranges' list")
+
+    ranges: List[str] = []
+    for item in entries:
+        if isinstance(item, str):
+            parts = [part.strip() for part in item.split("-", maxsplit=1)]
+            if len(parts) != 2:
+                raise ValueError(f"Invalid range value: {item}")
+            ranges.append(_validate_range_pair(parts[0], parts[1]))
+            continue
+
+        if isinstance(item, dict):
+            start_ip = str(item.get("start", "")).strip()
+            end_ip = str(item.get("end", "")).strip()
+            if not start_ip or not end_ip:
+                raise ValueError("Each JSON range object must contain 'start' and 'end'")
+            ranges.append(_validate_range_pair(start_ip, end_ip))
+            continue
+
+        raise ValueError("JSON ranges must contain strings or objects")
+
+    return ranges
+
+
+def _parse_csv_ranges(content: str) -> List[str]:
+    reader = csv.reader(io.StringIO(content))
+    ranges: List[str] = []
+
+    for row in reader:
+        if not row:
+            continue
+
+        cells = [str(cell).strip() for cell in row]
+        if len(cells) < 2:
+            continue
+
+        start_ip, end_ip = cells[0], cells[1]
+        if start_ip.lower() in {"start", "start_ip"} and end_ip.lower() in {"end", "end_ip"}:
+            continue
+
+        ranges.append(_validate_range_pair(start_ip, end_ip))
+
+    return ranges
+
+
+async def parse_ip_ranges_file(upload_file: UploadFile) -> List[str]:
+    if not upload_file.filename:
+        raise ValueError("Input file name is required")
+
+    raw_content = await upload_file.read()
+    await upload_file.seek(0)
+
+    content = raw_content.decode("utf-8", errors="ignore").strip()
+    if not content:
+        raise ValueError("Uploaded file is empty")
+
+    file_name = upload_file.filename.lower()
+
+    if file_name.endswith(".json"):
+        ranges = _parse_json_ranges(content)
+    elif file_name.endswith(".csv") or file_name.endswith(".txt"):
+        ranges = _parse_csv_ranges(content)
+    else:
+        try:
+            ranges = _parse_json_ranges(content)
+        except Exception:
+            ranges = _parse_csv_ranges(content)
+
+    if not ranges:
+        raise ValueError("No valid IP ranges found in uploaded file")
+
+    return ranges
 
 
 def scan_target(

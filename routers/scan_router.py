@@ -1,47 +1,78 @@
 import uuid
 import json
 import asyncio
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from fastapi.responses import FileResponse, StreamingResponse
 from pathlib import Path
 from loguru import logger
 
 from models.scan import Scan, ScanStatus
 from schemas.scan_schema import (
-    ScanCreateRequest,
     ScanListResponse,
     ScanOutputResponse,
     ScanResultJSON,
 )
-from services.scan_service import run_scan, read_csv_results
+from services.scan_service import run_scan, read_csv_results, parse_ip_ranges_file
 from utils.queue_manager import scan_queue
 
 router = APIRouter(prefix="/api/v1/scan", tags=["scans"])
 
 
 @router.post("", response_model=dict)
-async def create_scan(request: ScanCreateRequest):
+async def create_scan(
+    name: str = Form(...),
+    ports: str = Form(...),
+    workers: int = Form(10),
+    retries: int = Form(3),
+    ip_file: UploadFile = File(...),
+):
     """Create a new scan and queue it for processing"""
+    if workers < 1 or workers > 64:
+        raise HTTPException(status_code=400, detail="workers must be between 1 and 64")
+    if retries < 1 or retries > 10:
+        raise HTTPException(status_code=400, detail="retries must be between 1 and 10")
+
+    try:
+        ranges = await parse_ip_ranges_file(ip_file)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
     scan_id = str(uuid.uuid4())
+    scan_dir = Scan.scan_dir(scan_id)
+    scan_dir.mkdir(parents=True, exist_ok=True)
+
+    input_ext = Path(ip_file.filename or "").suffix or ".txt"
+    input_file_path = scan_dir / f"input_ranges{input_ext}"
+
+    input_bytes = await ip_file.read()
+
+    def _write_input_file() -> None:
+        with open(input_file_path, "wb") as handle:
+            handle.write(input_bytes)
+
+    await asyncio.to_thread(_write_input_file)
 
     # Create scan record
     scan = await Scan.create(
         id=scan_id,
-        name=request.name,
-        ip_range=request.ip_range,
-        ports=request.ports,
-        workers=request.workers,
-        retries=request.retries,
+        name=name,
+        ip_range=",".join(ranges),
+        input_file_name=ip_file.filename,
+        input_file_path=str(input_file_path),
+        ports=ports,
+        workers=workers,
+        retries=retries,
         status=ScanStatus.PENDING,
         progress=0,
         total_targets=0,
     )
 
-    logger.info(f"Created scan {scan_id} with name '{request.name}'")
+    logger.info(f"Created scan {scan_id} with name '{name}'")
 
     # Enqueue scan
     async def scan_callback():
-        await run_scan(scan, max_workers=request.workers)
+        scan_refreshed = await Scan.get(id=scan_id)
+        await run_scan(scan_refreshed, max_workers=workers)
 
     await scan_queue.enqueue(scan_id, scan_callback)
 
@@ -57,6 +88,10 @@ async def list_scans():
         ScanListResponse(
             id=scan.id,
             name=scan.name,
+            input_file_name=scan.input_file_name,
+            ports=scan.ports,
+            workers=scan.workers,
+            retries=scan.retries,
             status=scan.status,
             progress=scan.progress,
             total_targets=scan.total_targets,

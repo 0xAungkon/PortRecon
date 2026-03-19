@@ -40,6 +40,10 @@ class ScanResponse(BaseModel):
 class ScanListResponse(BaseModel):
     id: str
     name: str
+    input_file_name: Optional[str] = None
+    ports: Optional[str] = None
+    workers: Optional[int] = None
+    retries: Optional[int] = None
     status: ScanStatusSchema
     progress: int
     total_targets: int

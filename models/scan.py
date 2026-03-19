@@ -26,6 +26,8 @@ class Scan:
         ports: str,
         workers: int,
         retries: int,
+        input_file_name: Optional[str] = None,
+        input_file_path: Optional[str] = None,
         status: ScanStatus = ScanStatus.PENDING,
         progress: int = 0,
         total_targets: int = 0,
@@ -38,6 +40,8 @@ class Scan:
         self.id = id
         self.name = name
         self.ip_range = ip_range
+        self.input_file_name = input_file_name
+        self.input_file_path = input_file_path
         self.ports = ports
         self.workers = workers
         self.retries = retries
@@ -77,6 +81,8 @@ class Scan:
             "id": self.id,
             "name": self.name,
             "ip_range": self.ip_range,
+            "input_file_name": self.input_file_name,
+            "input_file_path": self.input_file_path,
             "ports": self.ports,
             "workers": self.workers,
             "retries": self.retries,
@@ -96,6 +102,8 @@ class Scan:
             id=payload["id"],
             name=payload["name"],
             ip_range=payload["ip_range"],
+            input_file_name=payload.get("input_file_name"),
+            input_file_path=payload.get("input_file_path"),
             ports=payload["ports"],
             workers=payload["workers"],
             retries=payload["retries"],

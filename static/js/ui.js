@@ -1,7 +1,8 @@
 import { state } from './state.js';
 
 export function showFieldError(message) {
-  const feedback = document.getElementById('importFeedback');
+  const feedback = document.getElementById('modalError') || document.getElementById('importFeedback');
+  if (!feedback) return;
   feedback.textContent = message;
   feedback.style.color = 'var(--red)';
 }
@@ -51,13 +52,13 @@ export function showScanningView(scan = null) {
 
   if (!scan) return;
 
-  const ranges = scan.ip_range ? scan.ip_range.split(',').join(', ') : '—';
+  const inputFile = scan.input_file_name || scan.input_file_path || '—';
   const status = scan.status ? scan.status.charAt(0).toUpperCase() + scan.status.slice(1) : '—';
   const total = scan.total_targets ?? '—';
 
   document.getElementById('detailName').textContent = scan.name || '—';
   document.getElementById('detailStatus').textContent = status;
-  document.getElementById('detailRanges').textContent = ranges;
+  document.getElementById('detailInputFile').textContent = inputFile;
   document.getElementById('detailPorts').textContent = scan.ports || '—';
   document.getElementById('detailTargets').textContent = total;
   document.getElementById('detailProgress').textContent = `${scan.progress ?? 0}/${total}`;
