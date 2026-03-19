@@ -23,6 +23,40 @@ from utils.queue_manager import scan_queue
 router = APIRouter(prefix="/api/v1/scan", tags=["scans"])
 
 
+def _normalized_progress(scan: Scan) -> dict:
+    total_ranges = scan.total_ranges or 0
+    completed_ranges = scan.completed_ranges or 0
+    total_hosts = scan.total_hosts or 0
+    completed_hosts = scan.completed_hosts or 0
+    failed_hosts = scan.failed_hosts or 0
+    progress_percent = scan.progress_percent or 0
+
+    # Backward compatibility for scans created before extended metrics existed.
+    if total_hosts == 0 and (scan.total_targets or 0) > 0:
+        total_hosts = scan.total_targets
+    if total_ranges == 0 and (scan.total_targets or 0) > 0:
+        total_ranges = scan.total_targets
+    if completed_ranges == 0 and (scan.progress or 0) > 0:
+        completed_ranges = scan.progress
+    if completed_hosts == 0 and completed_ranges > 0 and total_ranges > 0 and total_hosts > 0:
+        completed_hosts = int(round((completed_ranges / total_ranges) * total_hosts))
+    if progress_percent == 0 and total_ranges > 0 and completed_ranges > 0:
+        progress_percent = round((completed_ranges / total_ranges) * 100)
+
+    completed_ranges = min(completed_ranges, total_ranges) if total_ranges else completed_ranges
+    completed_hosts = min(completed_hosts, total_hosts) if total_hosts else completed_hosts
+    failed_hosts = min(failed_hosts, max(total_hosts - completed_hosts, 0)) if total_hosts else failed_hosts
+
+    return {
+        "total_ranges": total_ranges,
+        "completed_ranges": completed_ranges,
+        "total_hosts": total_hosts,
+        "completed_hosts": completed_hosts,
+        "failed_hosts": failed_hosts,
+        "progress_percent": progress_percent,
+    }
+
+
 @router.post("", response_model=dict)
 async def create_scan(
     name: str = Form(...),
@@ -98,27 +132,31 @@ async def list_scans():
     """Get all scans with their current status"""
     scans = await Scan.all()
     scans = sorted(scans, key=lambda s: s.created_at, reverse=True)
-    return [
-        ScanListResponse(
-            id=scan.id,
-            name=scan.name,
-            input_file_name=scan.input_file_name,
-            ports=scan.ports,
-            workers=scan.workers,
-            retries=scan.retries,
-            status=scan.status,
-            progress=scan.progress,
-            total_targets=scan.total_targets,
-            total_ranges=scan.total_ranges,
-            completed_ranges=scan.completed_ranges,
-            total_hosts=scan.total_hosts,
-            completed_hosts=scan.completed_hosts,
-            failed_hosts=scan.failed_hosts,
-            progress_percent=scan.progress_percent,
-            created_at=scan.created_at,
+    response: list[ScanListResponse] = []
+    for scan in scans:
+        metrics = _normalized_progress(scan)
+        response.append(
+            ScanListResponse(
+                id=scan.id,
+                name=scan.name,
+                input_file_name=scan.input_file_name,
+                ports=scan.ports,
+                workers=scan.workers,
+                retries=scan.retries,
+                status=scan.status,
+                progress=scan.progress,
+                total_targets=scan.total_targets,
+                total_ranges=metrics["total_ranges"],
+                completed_ranges=metrics["completed_ranges"],
+                total_hosts=metrics["total_hosts"],
+                completed_hosts=metrics["completed_hosts"],
+                failed_hosts=metrics["failed_hosts"],
+                progress_percent=metrics["progress_percent"],
+                created_at=scan.created_at,
+            )
         )
-        for scan in scans
-    ]
+
+    return response
 
 
 @router.get("/{uuid}", response_class=StreamingResponse)
@@ -134,6 +172,7 @@ async def get_scan_progress(uuid: str):
         while True:
             # Refresh scan data
             scan_updated = await Scan.get(id=uuid)
+            metrics = _normalized_progress(scan_updated)
 
             progress_data = {
                 "id": scan_updated.id,
@@ -141,12 +180,12 @@ async def get_scan_progress(uuid: str):
                 "status": scan_updated.status,
                 "progress": scan_updated.progress,
                 "total_targets": scan_updated.total_targets,
-                "total_ranges": scan_updated.total_ranges,
-                "completed_ranges": scan_updated.completed_ranges,
-                "total_hosts": scan_updated.total_hosts,
-                "completed_hosts": scan_updated.completed_hosts,
-                "failed_hosts": scan_updated.failed_hosts,
-                "progress_percent": scan_updated.progress_percent,
+                "total_ranges": metrics["total_ranges"],
+                "completed_ranges": metrics["completed_ranges"],
+                "total_hosts": metrics["total_hosts"],
+                "completed_hosts": metrics["completed_hosts"],
+                "failed_hosts": metrics["failed_hosts"],
+                "progress_percent": metrics["progress_percent"],
                 "is_processing": scan_queue.is_processing(uuid),
                 "is_queued": scan_queue.is_queued(uuid),
             }
