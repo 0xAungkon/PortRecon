@@ -2,6 +2,7 @@ import nmap
 import asyncio
 import csv
 import ipaddress
+import time
 from pathlib import Path
 from datetime import datetime
 from typing import List, Tuple
@@ -35,16 +36,26 @@ async def parse_range(cidr_range: str) -> str:
 
 
 async def get_targets_from_range(ip_range: str) -> List[str]:
-    """Parse IP range and return list of nmap targets"""
-    try:
-        target = await parse_range(ip_range)
-        return [target]
-    except ValueError as e:
-        logger.error(f"Invalid IP range '{ip_range}': {e}")
-        raise
+    """
+    Parse comma-separated IP ranges and return list of nmap targets.
+    Each range should be in 'START-END' format (e.g., '192.168.1.1-192.168.1.50')
+    Multiple ranges separated by commas are supported.
+    """
+    targets = []
+    ranges = [r.strip() for r in ip_range.split(",") if r.strip()]
+    
+    for range_str in ranges:
+        try:
+            target = await parse_range(range_str)
+            targets.append(target)
+        except ValueError as e:
+            logger.error(f"Invalid IP range '{range_str}': {e}")
+            raise ValueError(f"Invalid IP range '{range_str}': {e}")
+    
+    return targets
 
 
-async def scan_target(
+def scan_target(
     target: str, ports: str, retries: int = 3, retry_backoff: int = 2
 ) -> Tuple[int, List[Tuple[str, List[str]]]]:
     """
@@ -74,7 +85,7 @@ async def scan_target(
             if attempt == retries:
                 logger.error(f"Failed target {target} after {retries} attempts: {exc}")
                 return 0, []
-            await asyncio.sleep(retry_backoff**attempt)
+            time.sleep(retry_backoff**attempt)
 
     return 0, []
 

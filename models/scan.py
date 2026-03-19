@@ -14,8 +14,8 @@ class ScanStatus(str, Enum):
 class Scan(Model):
     id = fields.CharField(max_length=36, pk=True)  # UUID
     name = fields.CharField(max_length=255)
-    ip_range = fields.CharField(max_length=255)
-    ports = fields.CharField(max_length=255)
+    ip_range = fields.TextField()  # Large text field for many IP ranges
+    ports = fields.TextField()  # Large text field for many ports
     workers = fields.IntField()
     retries = fields.IntField()
     status = fields.CharEnumField(ScanStatus, default=ScanStatus.PENDING)

@@ -13,8 +13,8 @@ class ScanStatusSchema(str, Enum):
 
 class ScanCreateRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
-    ip_range: str = Field(..., min_length=1, max_length=255)
-    ports: str = Field(..., min_length=1, max_length=255)
+    ip_range: str = Field(..., min_length=1)
+    ports: str = Field(..., min_length=1, max_length=65535)
     workers: int = Field(default=16, ge=1, le=64)
     retries: int = Field(default=3, ge=1, le=10)
 
