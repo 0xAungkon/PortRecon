@@ -7,8 +7,16 @@ export function showFieldError(message) {
   feedback.style.color = 'var(--red)';
 }
 
-export function updateProgress(done, total) {
-  const pct = total ? Math.round((done / total) * 100) : 0;
+export function updateProgress(metrics = {}) {
+  const totalRanges = Number(metrics.totalRanges ?? 0);
+  const completedRanges = Number(metrics.completedRanges ?? 0);
+  const totalHosts = Number(metrics.totalHosts ?? 0);
+  const completedHosts = Number(metrics.completedHosts ?? 0);
+  const failedHosts = Number(metrics.failedHosts ?? 0);
+  const pct = Number.isFinite(Number(metrics.progressPercent))
+    ? Number(metrics.progressPercent)
+    : (totalRanges ? Math.round((completedRanges / totalRanges) * 100) : 0);
+
   document.getElementById('progressBar').style.width = `${pct}%`;
   document.getElementById('progressPct').textContent = `${pct}%`;
 
@@ -16,14 +24,14 @@ export function updateProgress(done, total) {
     document.getElementById('progressLabel').textContent = 'Scan completed';
     document.getElementById('currentTarget').textContent = '✓ Finished';
     document.getElementById('progressBar').classList.remove('active');
-  } else if (done > 0) {
-    document.getElementById('progressLabel').textContent = `Scanning: ${done}/${total}`;
+  } else if (completedRanges > 0) {
+    document.getElementById('progressLabel').textContent = `Ranges: ${completedRanges}/${totalRanges}`;
     document.getElementById('currentTarget').textContent = 'Scanning targets…';
   }
 
-  document.getElementById('statScanned').textContent = done;
-  document.getElementById('statTotal').textContent = total;
-  document.getElementById('progressMeta').textContent = `${pct}% complete · ${state.results.length} host${state.results.length !== 1 ? 's' : ''} with open ports`;
+  document.getElementById('statScanned').textContent = completedHosts;
+  document.getElementById('statTotal').textContent = totalHosts;
+  document.getElementById('progressMeta').textContent = `Ranges ${completedRanges}/${totalRanges} · Hosts ${completedHosts}/${totalHosts} · Failed ${failedHosts} · ${pct}%`;
 }
 
 export function setChip(status) {
@@ -54,14 +62,23 @@ export function showScanningView(scan = null) {
 
   const inputFile = scan.input_file_name || scan.input_file_path || '—';
   const status = scan.status ? scan.status.charAt(0).toUpperCase() + scan.status.slice(1) : '—';
-  const total = scan.total_targets ?? '—';
+  const totalRanges = scan.total_ranges ?? '—';
+  const completedRanges = scan.completed_ranges ?? 0;
+  const totalHosts = scan.total_hosts ?? '—';
+  const completedHosts = scan.completed_hosts ?? 0;
+  const failedHosts = scan.failed_hosts ?? 0;
+  const progressPct = scan.progress_percent ?? 0;
 
   document.getElementById('detailName').textContent = scan.name || '—';
   document.getElementById('detailStatus').textContent = status;
   document.getElementById('detailInputFile').textContent = inputFile;
   document.getElementById('detailPorts').textContent = scan.ports || '—';
-  document.getElementById('detailTargets').textContent = total;
-  document.getElementById('detailProgress').textContent = `${scan.progress ?? 0}/${total}`;
+  document.getElementById('detailTotalRanges').textContent = totalRanges;
+  document.getElementById('detailCompletedRanges').textContent = completedRanges;
+  document.getElementById('detailTotalHosts').textContent = totalHosts;
+  document.getElementById('detailCompletedHosts').textContent = completedHosts;
+  document.getElementById('detailFailedHosts').textContent = failedHosts;
+  document.getElementById('detailProgressPct').textContent = `${progressPct}%`;
 }
 
 export function showResultsTableView() {

@@ -31,6 +31,12 @@ class Scan:
         status: ScanStatus = ScanStatus.PENDING,
         progress: int = 0,
         total_targets: int = 0,
+        total_ranges: int = 0,
+        completed_ranges: int = 0,
+        total_hosts: int = 0,
+        completed_hosts: int = 0,
+        failed_hosts: int = 0,
+        progress_percent: int = 0,
         results_file: Optional[str] = None,
         error_message: Optional[str] = None,
         created_at: Optional[datetime] = None,
@@ -48,6 +54,12 @@ class Scan:
         self.status = status
         self.progress = progress
         self.total_targets = total_targets
+        self.total_ranges = total_ranges
+        self.completed_ranges = completed_ranges
+        self.total_hosts = total_hosts
+        self.completed_hosts = completed_hosts
+        self.failed_hosts = failed_hosts
+        self.progress_percent = progress_percent
         self.results_file = results_file
         self.error_message = error_message
         self.created_at = created_at or datetime.utcnow()
@@ -89,6 +101,12 @@ class Scan:
             "status": self.status.value,
             "progress": self.progress,
             "total_targets": self.total_targets,
+            "total_ranges": self.total_ranges,
+            "completed_ranges": self.completed_ranges,
+            "total_hosts": self.total_hosts,
+            "completed_hosts": self.completed_hosts,
+            "failed_hosts": self.failed_hosts,
+            "progress_percent": self.progress_percent,
             "results_file": self.results_file,
             "error_message": self.error_message,
             "created_at": self._to_iso(self.created_at),
@@ -110,6 +128,12 @@ class Scan:
             status=ScanStatus(payload.get("status", ScanStatus.PENDING.value)),
             progress=payload.get("progress", 0),
             total_targets=payload.get("total_targets", 0),
+            total_ranges=payload.get("total_ranges", 0),
+            completed_ranges=payload.get("completed_ranges", 0),
+            total_hosts=payload.get("total_hosts", 0),
+            completed_hosts=payload.get("completed_hosts", 0),
+            failed_hosts=payload.get("failed_hosts", 0),
+            progress_percent=payload.get("progress_percent", 0),
             results_file=payload.get("results_file"),
             error_message=payload.get("error_message"),
             created_at=cls._from_iso(payload.get("created_at")),

@@ -12,7 +12,12 @@ from schemas.scan_schema import (
     ScanOutputResponse,
     ScanResultJSON,
 )
-from services.scan_service import run_scan, read_csv_results, parse_ip_ranges_file
+from services.scan_service import (
+    run_scan,
+    read_csv_results,
+    parse_ip_ranges_file,
+    count_hosts_in_ranges,
+)
 from utils.queue_manager import scan_queue
 
 router = APIRouter(prefix="/api/v1/scan", tags=["scans"])
@@ -36,6 +41,9 @@ async def create_scan(
         ranges = await parse_ip_ranges_file(ip_file)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+
+    total_ranges = len(ranges)
+    total_hosts = count_hosts_in_ranges(ranges)
 
     scan_id = str(uuid.uuid4())
     scan_dir = Scan.scan_dir(scan_id)
@@ -64,7 +72,13 @@ async def create_scan(
         retries=retries,
         status=ScanStatus.PENDING,
         progress=0,
-        total_targets=0,
+        total_targets=total_hosts,
+        total_ranges=total_ranges,
+        completed_ranges=0,
+        total_hosts=total_hosts,
+        completed_hosts=0,
+        failed_hosts=0,
+        progress_percent=0,
     )
 
     logger.info(f"Created scan {scan_id} with name '{name}'")
@@ -95,6 +109,12 @@ async def list_scans():
             status=scan.status,
             progress=scan.progress,
             total_targets=scan.total_targets,
+            total_ranges=scan.total_ranges,
+            completed_ranges=scan.completed_ranges,
+            total_hosts=scan.total_hosts,
+            completed_hosts=scan.completed_hosts,
+            failed_hosts=scan.failed_hosts,
+            progress_percent=scan.progress_percent,
             created_at=scan.created_at,
         )
         for scan in scans
@@ -121,6 +141,12 @@ async def get_scan_progress(uuid: str):
                 "status": scan_updated.status,
                 "progress": scan_updated.progress,
                 "total_targets": scan_updated.total_targets,
+                "total_ranges": scan_updated.total_ranges,
+                "completed_ranges": scan_updated.completed_ranges,
+                "total_hosts": scan_updated.total_hosts,
+                "completed_hosts": scan_updated.completed_hosts,
+                "failed_hosts": scan_updated.failed_hosts,
+                "progress_percent": scan_updated.progress_percent,
                 "is_processing": scan_queue.is_processing(uuid),
                 "is_queued": scan_queue.is_queued(uuid),
             }

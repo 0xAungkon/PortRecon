@@ -141,12 +141,32 @@ async def parse_ip_ranges_file(upload_file: UploadFile) -> List[str]:
     return ranges
 
 
+def _count_hosts_in_range(range_str: str) -> int:
+    parts = range_str.strip().split("-", maxsplit=1)
+    if len(parts) != 2:
+        raise ValueError(f"Invalid range format: {range_str}")
+
+    start_ip = ipaddress.ip_address(parts[0].strip())
+    end_ip = ipaddress.ip_address(parts[1].strip())
+
+    if start_ip.version != end_ip.version:
+        raise ValueError(f"IP version mismatch in range: {range_str}")
+    if int(end_ip) < int(start_ip):
+        raise ValueError(f"Range end before start: {range_str}")
+
+    return int(end_ip) - int(start_ip) + 1
+
+
+def count_hosts_in_ranges(range_list: List[str]) -> int:
+    return sum(_count_hosts_in_range(range_str) for range_str in range_list)
+
+
 def scan_target(
     target: str, ports: str, retries: int = 3, retry_backoff: int = 2
-) -> Tuple[int, List[Tuple[str, List[str]]]]:
+) -> Tuple[int, List[Tuple[str, List[str]]], bool]:
     """
     Scan a single target and return results.
-    Returns (host_count, results_list)
+    Returns (host_count, results_list, success)
     """
     nm = nmap.PortScanner()
     port_list = [int(p.strip()) for p in ports.split(",")]
@@ -165,15 +185,15 @@ def scan_target(
                 if open_ports:
                     results.append((host, open_ports))
 
-            return len(nm.all_hosts()), results
+            return len(nm.all_hosts()), results, True
 
         except Exception as exc:
             if attempt == retries:
                 logger.error(f"Failed target {target} after {retries} attempts: {exc}")
-                return 0, []
+                return 0, [], False
             time.sleep(retry_backoff**attempt)
 
-    return 0, []
+    return 0, [], False
 
 
 async def run_scan(scan: Scan, max_workers: int = 16) -> None:
@@ -182,9 +202,21 @@ async def run_scan(scan: Scan, max_workers: int = 16) -> None:
     csv_file.parent.mkdir(parents=True, exist_ok=True)
 
     try:
-        # Parse targets
+        raw_ranges = [r.strip() for r in scan.ip_range.split(",") if r.strip()]
         targets = await get_targets_from_range(scan.ip_range)
-        scan.total_targets = len(targets)
+
+        total_ranges = len(raw_ranges)
+        total_hosts = count_hosts_in_ranges(raw_ranges)
+
+        scan.total_ranges = total_ranges
+        scan.completed_ranges = 0
+        scan.total_hosts = total_hosts
+        scan.completed_hosts = 0
+        scan.failed_hosts = 0
+        scan.progress_percent = 0
+
+        scan.progress = 0
+        scan.total_targets = total_hosts
         scan.status = ScanStatus.RUNNING
         scan.started_at = datetime.utcnow()
         await scan.save()
@@ -197,27 +229,48 @@ async def run_scan(scan: Scan, max_workers: int = 16) -> None:
 
         # Run scans in parallel (limited by max_workers)
         all_results = []
-        completed = 0
+        completed_ranges = 0
 
-        async def scan_with_progress(target: str) -> None:
-            nonlocal completed
-            host_count, results = await asyncio.to_thread(
+        async def scan_with_progress(target: str, hosts_in_target: int) -> None:
+            nonlocal completed_ranges
+            host_count, results, success = await asyncio.to_thread(
                 scan_target, target, scan.ports, scan.retries
             )
             all_results.extend(results)
-            completed += 1
-            scan.progress = completed
+
+            completed_ranges += 1
+            scan.completed_ranges = completed_ranges
+            scan.progress = completed_ranges
+
+            if success:
+                scan.completed_hosts += hosts_in_target
+            else:
+                scan.failed_hosts += hosts_in_target
+
+            scan.progress_percent = (
+                round((completed_ranges / total_ranges) * 100) if total_ranges else 0
+            )
+
             await scan.save()
-            logger.debug(f"Scan progress: {completed}/{len(targets)}")
+            logger.debug(
+                f"Scan progress: ranges {completed_ranges}/{total_ranges}, "
+                f"hosts completed={scan.completed_hosts}, failed={scan.failed_hosts}, discovered={host_count}"
+            )
 
         # Process targets in chunks to respect max_workers
         semaphore = asyncio.Semaphore(max_workers)
 
-        async def bounded_scan(target: str) -> None:
+        async def bounded_scan(target: str, hosts_in_target: int) -> None:
             async with semaphore:
-                await scan_with_progress(target)
+                await scan_with_progress(target, hosts_in_target)
 
-        await asyncio.gather(*[bounded_scan(t) for t in targets])
+        range_target_pairs = list(zip(raw_ranges, targets))
+        await asyncio.gather(
+            *[
+                bounded_scan(target, _count_hosts_in_range(raw_range))
+                for raw_range, target in range_target_pairs
+            ]
+        )
 
         # Write all results to CSV
         if all_results:
@@ -230,6 +283,8 @@ async def run_scan(scan: Scan, max_workers: int = 16) -> None:
         scan.status = ScanStatus.COMPLETED
         scan.completed_at = datetime.utcnow()
         scan.results_file = str(csv_file)
+        scan.progress = scan.total_ranges
+        scan.progress_percent = 100 if scan.total_ranges else 0
         await scan.save()
         logger.info(f"Completed scan {scan.id}")
 

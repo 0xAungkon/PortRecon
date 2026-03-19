@@ -47,6 +47,12 @@ class ScanListResponse(BaseModel):
     status: ScanStatusSchema
     progress: int
     total_targets: int
+    total_ranges: int = 0
+    completed_ranges: int = 0
+    total_hosts: int = 0
+    completed_hosts: int = 0
+    failed_hosts: int = 0
+    progress_percent: int = 0
     created_at: datetime
 
     class Config:

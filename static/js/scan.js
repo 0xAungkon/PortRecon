@@ -37,13 +37,24 @@ export function listenToScanStatus(scanId) {
     document.getElementById('tbMeta').textContent = data.status === 'running' ? 'Scan in progress…' : 'Scan completed';
 
     setChip(data.status);
-    updateProgress(data.progress, data.total_targets);
+    updateProgress({
+      totalRanges: data.total_ranges,
+      completedRanges: data.completed_ranges,
+      totalHosts: data.total_hosts,
+      completedHosts: data.completed_hosts,
+      failedHosts: data.failed_hosts,
+      progressPercent: data.progress_percent,
+    });
     setSidebarDot(scanId, data.status);
 
     if (data.status === 'running' || data.status === 'completed') {
       document.getElementById('detailStatus').textContent = data.status === 'running' ? 'Running' : 'Completed';
-      document.getElementById('detailTargets').textContent = data.total_targets ?? '—';
-      document.getElementById('detailProgress').textContent = `${data.progress}/${data.total_targets}`;
+      document.getElementById('detailTotalRanges').textContent = data.total_ranges ?? '—';
+      document.getElementById('detailCompletedRanges').textContent = data.completed_ranges ?? '—';
+      document.getElementById('detailTotalHosts').textContent = data.total_hosts ?? '—';
+      document.getElementById('detailCompletedHosts').textContent = data.completed_hosts ?? '—';
+      document.getElementById('detailFailedHosts').textContent = data.failed_hosts ?? '—';
+      document.getElementById('detailProgressPct').textContent = `${data.progress_percent ?? 0}%`;
     }
 
     if (data.status === 'completed' || data.status === 'failed') {
@@ -76,7 +87,14 @@ export async function loadScan(id) {
   document.getElementById('tbMeta').textContent = new Date(scan.created_at).toLocaleTimeString();
 
   setChip(scan.status);
-  updateProgress(scan.progress, scan.total_targets);
+  updateProgress({
+    totalRanges: scan.total_ranges,
+    completedRanges: scan.completed_ranges,
+    totalHosts: scan.total_hosts,
+    completedHosts: scan.completed_hosts,
+    failedHosts: scan.failed_hosts,
+    progressPercent: scan.progress_percent,
+  });
   showScanningView(scan);
   listenToScanStatus(id);
 
@@ -163,6 +181,12 @@ export async function startScan() {
   document.getElementById('detailInputFile').textContent = ipFile.name;
   document.getElementById('detailPorts').textContent = ports;
   document.getElementById('detailStatus').textContent = 'Pending';
+  document.getElementById('detailTotalRanges').textContent = '—';
+  document.getElementById('detailCompletedRanges').textContent = '0';
+  document.getElementById('detailTotalHosts').textContent = '—';
+  document.getElementById('detailCompletedHosts').textContent = '0';
+  document.getElementById('detailFailedHosts').textContent = '0';
+  document.getElementById('detailProgressPct').textContent = '0%';
 
   try {
     const payload = new FormData();
