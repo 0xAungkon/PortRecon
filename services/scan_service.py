@@ -3,7 +3,6 @@ import asyncio
 import csv
 import ipaddress
 import time
-from pathlib import Path
 from datetime import datetime
 from typing import List, Tuple
 from loguru import logger
@@ -92,7 +91,7 @@ def scan_target(
 
 async def run_scan(scan: Scan, max_workers: int = 16) -> None:
     """Execute scan and update database with results"""
-    csv_file = Path("uploads") / f"{scan.id}.csv"
+    csv_file = Scan.scan_dir(scan.id) / "results.csv"
     csv_file.parent.mkdir(parents=True, exist_ok=True)
 
     try:
@@ -157,7 +156,7 @@ async def run_scan(scan: Scan, max_workers: int = 16) -> None:
 
 async def read_csv_results(scan_id: str) -> List[dict]:
     """Read CSV results and return as list of dicts"""
-    csv_file = Path("uploads") / f"{scan_id}.csv"
+    csv_file = Scan.scan_dir(scan_id) / "results.csv"
 
     if not csv_file.exists():
         return []

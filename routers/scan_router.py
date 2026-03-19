@@ -9,7 +9,6 @@ from loguru import logger
 from models.scan import Scan, ScanStatus
 from schemas.scan_schema import (
     ScanCreateRequest,
-    ScanResponse,
     ScanListResponse,
     ScanOutputResponse,
     ScanResultJSON,
@@ -52,7 +51,8 @@ async def create_scan(request: ScanCreateRequest):
 @router.get("", response_model=list[ScanListResponse])
 async def list_scans():
     """Get all scans with their current status"""
-    scans = await Scan.all().order_by("-created_at")
+    scans = await Scan.all()
+    scans = sorted(scans, key=lambda s: s.created_at, reverse=True)
     return [
         ScanListResponse(
             id=scan.id,
@@ -143,7 +143,7 @@ async def download_scan_results(uuid: str):
             detail=f"Scan not completed. Current status: {scan.status}",
         )
 
-    csv_file = Path("uploads") / f"{uuid}.csv"
+    csv_file = Path(scan.results_file) if scan.results_file else Path("scans") / uuid / "results.csv"
 
     if not csv_file.exists():
         raise HTTPException(status_code=404, detail="Results file not found")

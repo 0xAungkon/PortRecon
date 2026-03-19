@@ -8,7 +8,6 @@ dependencies = [
     "python-nmap>=0.7.1",
     "fastapi>=0.104.0",
     "uvicorn>=0.24.0",
-    "tortoise-orm>=0.21.0",
     "rich>=13.7.0",
     "loguru>=0.7.2",
     "python-multipart>=0.0.6",

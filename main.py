@@ -5,7 +5,6 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from tortoise.contrib.fastapi import register_tortoise
 from loguru import logger
 from pathlib import Path
 
@@ -43,15 +42,6 @@ app = FastAPI(
     description="Port reconnaissance scanner API",
     version="0.1.0",
     lifespan=lifespan,
-)
-
-# Register Tortoise ORM
-register_tortoise(
-    app,
-    db_url="sqlite://db.sqlite3",
-    modules={"models": ["models.scan"]},
-    generate_schemas=True,
-    add_exception_handlers=True,
 )
 
 # Include routers

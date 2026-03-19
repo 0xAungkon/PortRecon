@@ -1,6 +1,7 @@
 import asyncio
-from typing import Optional, Dict, Callable, Any
+from typing import Optional, Dict, Callable
 from loguru import logger
+from models.scan import Scan
 
 
 class QueueManager:
@@ -16,6 +17,7 @@ class QueueManager:
         """Enqueue a scan with callback function"""
         await self.queue.put((scan_id, callback))
         self.task_callbacks[scan_id] = callback
+        await Scan.set_lock(scan_id, "queued")
         logger.info(f"Scan {scan_id} enqueued")
 
     async def process(self) -> None:
@@ -35,6 +37,7 @@ class QueueManager:
                         self.queue.get(), timeout=1.0
                     )
                     self.current_task = scan_id
+                    await Scan.set_lock(scan_id, "processing")
                     logger.info(f"Processing scan {scan_id}")
 
                     await callback()
@@ -43,6 +46,8 @@ class QueueManager:
                 except asyncio.TimeoutError:
                     continue
                 finally:
+                    if scan_id:
+                        await Scan.clear_lock(scan_id)
                     self.current_task = None
                     if scan_id and scan_id in self.task_callbacks:
                         del self.task_callbacks[scan_id]
