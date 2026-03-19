@@ -97,7 +97,6 @@ export function checkURLParams() {
   if (!uuid) {
     showConfigView();
     showResultsTableView();
-    openLaunchPanel();
     return;
   }
 
@@ -109,7 +108,6 @@ export function checkURLParams() {
 
   showConfigView();
   showResultsTableView();
-  openLaunchPanel();
 }
 
 export function newScan() {
@@ -120,20 +118,6 @@ export function newScan() {
   showConfigView();
   showResultsTableView();
   resetAll(false);
-  openLaunchPanel();
-}
-
-export function openLaunchPanel() {
-  const panel = document.getElementById('launchPanel');
-  if (!panel) return;
-  panel.classList.remove('hidden');
-  document.getElementById('modalError').textContent = '';
-}
-
-export function closeLaunchPanel() {
-  const panel = document.getElementById('launchPanel');
-  if (!panel) return;
-  panel.classList.add('hidden');
 }
 
 function resetLaunchForm() {
@@ -216,7 +200,6 @@ export async function startScan() {
 
     await loadScanHistory();
     setActiveSidebar(scanId);
-    closeLaunchPanel();
     resetLaunchForm();
 
     document.getElementById('tbTitle').textContent = name;

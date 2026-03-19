@@ -73,7 +73,7 @@
     </div>
     <!-- Action Controls (shown during config, hidden during scan) -->
     <div id="actionControls" class="topbar-actions">
-      <button class="btn-primary" id="startBtn" onclick="openLaunchPanel()">
+      <button class="btn-primary" id="startBtn" onclick="startScan()">
         <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
         Launch Scan
       </button>
@@ -89,6 +89,7 @@
   </div>
 
   <!-- Content -->
+  <div class="main-layout">
   <div class="content">
 
     <!-- ── CARD 1: Configuration ── -->
@@ -104,10 +105,7 @@
         <div id="configView">
           <div class="launch-intro">
             <div class="launch-intro-title">Launch scans from file upload</div>
-            <div class="launch-intro-sub">Upload a JSON/CSV range file in the launch modal. IP ranges are parsed only on the backend.</div>
-            <button class="btn-primary" onclick="openLaunchPanel()" style="margin-top:14px;">
-              Open Launch Panel
-            </button>
+            <div class="launch-intro-sub">Upload a JSON/CSV range file from the launch form on the right. IP ranges are parsed only on the backend.</div>
           </div>
         </div>
 
@@ -233,43 +231,43 @@
     </div>
 
   </div><!-- /content -->
-</main>
 
-<aside id="launchPanel" class="launch-panel hidden">
-  <div class="launch-panel-header">
-    <div class="launch-panel-title">Launch Scan</div>
-    <button class="launch-panel-close" onclick="closeLaunchPanel()">×</button>
-  </div>
-  <div class="launch-panel-body">
-    <div class="launch-panel-field">
-      <label class="field-lbl" for="launchName">Name</label>
-      <input type="text" id="launchName" placeholder="e.g. Weekly DC scan" />
+  <aside id="launchPanel" class="launch-panel">
+    <div class="launch-panel-header">
+      <div class="launch-panel-title">Launch Scan</div>
     </div>
-    <div class="launch-panel-field">
-      <label class="field-lbl" for="launchFile">IP Range File (JSON/CSV)</label>
-      <input type="file" id="launchFile" accept=".json,.csv,.txt" />
-    </div>
-    <div class="launch-panel-field">
-      <label class="field-lbl" for="launchPorts">Ports</label>
-      <input type="text" id="launchPorts" value="22,80,443,3306,8080,3389" placeholder="22,80,443" />
-    </div>
-    <div class="grid-2">
-      <div>
-        <label class="field-lbl" for="launchWorkers">Workers</label>
-        <input type="number" id="launchWorkers" value="10" min="1" max="64" />
+    <div class="launch-panel-body">
+      <div class="launch-panel-field">
+        <label class="field-lbl" for="launchName">Name</label>
+        <input type="text" id="launchName" placeholder="e.g. Weekly DC scan" />
       </div>
-      <div>
-        <label class="field-lbl" for="launchRetries">Retries</label>
-        <input type="number" id="launchRetries" value="3" min="1" max="10" />
+      <div class="launch-panel-field">
+        <label class="field-lbl" for="launchFile">IP Range File (JSON/CSV)</label>
+        <input type="file" id="launchFile" accept=".json,.csv,.txt" />
       </div>
+      <div class="launch-panel-field">
+        <label class="field-lbl" for="launchPorts">Ports</label>
+        <input type="text" id="launchPorts" value="22,80,443,3306,8080,3389" placeholder="22,80,443" />
+      </div>
+      <div class="grid-2">
+        <div>
+          <label class="field-lbl" for="launchWorkers">Workers</label>
+          <input type="number" id="launchWorkers" value="10" min="1" max="64" />
+        </div>
+        <div>
+          <label class="field-lbl" for="launchRetries">Retries</label>
+          <input type="number" id="launchRetries" value="3" min="1" max="10" />
+        </div>
+      </div>
+      <div class="import-feedback" id="modalError"></div>
     </div>
-    <div class="import-feedback" id="modalError"></div>
-  </div>
-  <div class="launch-panel-footer">
-    <button class="btn-secondary" onclick="closeLaunchPanel()">Cancel</button>
-    <button class="btn-primary" id="modalStartBtn" onclick="startScan()">Start Scan</button>
-  </div>
-</aside>
+    <div class="launch-panel-footer">
+      <button class="btn-primary" id="modalStartBtn" onclick="startScan()">Start Scan</button>
+    </div>
+  </aside>
+
+  </div><!-- /main-layout -->
+</main>
 
 <script type="module" src="/static/js/app.js"></script>
 </body>

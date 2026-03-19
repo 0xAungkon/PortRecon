@@ -260,7 +260,17 @@ input  { font-family: inherit; }
 .topbar-left .tb-meta  { font-size: 12px; color: var(--tx-secondary); margin-top: 1px; }
 
 /* ─── CONTENT ─────────────────────────────────────── */
-.content { padding: 24px 28px 40px; max-width: 960px; }
+.main-layout {
+  padding: 24px 28px 40px;
+  display: grid;
+  grid-template-columns: 60% 40%;
+  gap: 18px;
+  align-items: start;
+}
+
+.content {
+  min-width: 0;
+}
 
 /* ─── CARDS ───────────────────────────────────────── */
 .card {
@@ -685,28 +695,15 @@ code { font-family: 'JetBrains Mono', monospace; font-size: .9em; background: va
 }
 
 .launch-panel {
-  position: fixed;
-  top: 0;
-  right: 0;
-  width: 380px;
-  height: 100vh;
+  position: sticky;
+  top: 82px;
+  width: 100%;
   background: var(--surface);
-  border-left: 1px solid var(--border);
-  box-shadow: var(--shadow-lg);
-  z-index: 1000;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
-  transform: translateX(100%);
-  transition: transform 0.3s ease-out;
-}
-
-.launch-panel.hidden {
-  transform: translateX(100%);
-  pointer-events: none;
-}
-
-.launch-panel:not(.hidden) {
-  transform: translateX(0);
 }
 
 .launch-panel-header {
@@ -721,22 +718,6 @@ code { font-family: 'JetBrains Mono', monospace; font-size: .9em; background: va
 .launch-panel-title {
   font-size: 15px;
   font-weight: 700;
-}
-
-.launch-panel-close {
-  width: 28px;
-  height: 28px;
-  border-radius: 7px;
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--tx-secondary);
-  font-size: 18px;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.launch-panel-close:hover {
-  background: var(--surface-alt);
 }
 
 .launch-panel-body {
@@ -764,6 +745,17 @@ code { font-family: 'JetBrains Mono', monospace; font-size: .9em; background: va
   justify-content: flex-end;
   gap: 10px;
   flex-shrink: 0;
+}
+
+@media (max-width: 1200px) {
+  .main-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .launch-panel {
+    position: static;
+    top: auto;
+  }
 }
 
 /* ─── RESULTS TEXT VIEW ──────────────────────────– */
