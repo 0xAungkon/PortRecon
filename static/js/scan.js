@@ -62,7 +62,7 @@ export function listenToScanStatus(scanId) {
       if (data.status === 'completed') {
         fetchScanResults(scanId).then(() => {
           renderResults();
-          showResultsTextView();
+          showResultsTableView();
         });
       }
       loadScanHistory();
@@ -101,7 +101,7 @@ export async function loadScan(id) {
   if (scan.status === 'completed') {
     await fetchScanResults(id);
     renderResults();
-    showResultsTextView();
+    showResultsTableView();
   } else {
     state.results = [];
     renderResults();
