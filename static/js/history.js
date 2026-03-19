@@ -32,7 +32,6 @@ export function renderScanHistory() {
       running: 'running',
       completed: 'completed',
       failed: 'failed',
-      stopped: 'stopped',
     }[scan.status] || 'pending';
 
     const created = new Date(scan.created_at);

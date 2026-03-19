@@ -11,7 +11,6 @@ class ScanStatus(str, Enum):
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
-    STOPPED = "stopped"
 
 
 class Scan:

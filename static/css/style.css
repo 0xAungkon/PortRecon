@@ -198,7 +198,6 @@ input  { font-family: inherit; }
 .scan-dot.running { background: var(--accent); animation: pulse-dot 1s ease infinite; }
 .scan-dot.completed { background: var(--green); }
 .scan-dot.failed { background: var(--red); }
-.scan-dot.stopped { background: var(--amber); }
 @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:.3} }
 
 .scan-item-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
@@ -610,12 +609,6 @@ code { font-family: 'JetBrains Mono', monospace; font-size: .9em; background: va
 .hidden { display: none !important; }
 .import-feedback { font-size: 12px; color: var(--green); margin-top: 6px; font-weight: 500; }
 .row-meta { font-size: 12px; color: var(--tx-muted); }
-
-.config-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 14px;
-}
 
 /* Tooltip on scanning IP */
 .scan-target-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
