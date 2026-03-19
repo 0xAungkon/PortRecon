@@ -12,6 +12,7 @@ class QueueManager:
         self.current_task: Optional[str] = None
         self.is_running = False
         self.task_callbacks: Dict[str, Callable] = {}
+        self.cancelled_scans: set[str] = set()
 
     async def enqueue(self, scan_id: str, callback: Callable) -> None:
         """Enqueue a scan with callback function"""
@@ -36,6 +37,12 @@ class QueueManager:
                     scan_id, callback = await asyncio.wait_for(
                         self.queue.get(), timeout=1.0
                     )
+
+                    if scan_id in self.cancelled_scans:
+                        logger.info(f"Skipping cancelled scan {scan_id} from queue")
+                        self.cancelled_scans.discard(scan_id)
+                        continue
+
                     self.current_task = scan_id
                     await Scan.set_lock(scan_id, "processing")
                     logger.info(f"Processing scan {scan_id}")
@@ -66,6 +73,12 @@ class QueueManager:
     def queue_size(self) -> int:
         """Get current queue size"""
         return self.queue.qsize()
+
+    def cancel(self, scan_id: str) -> None:
+        """Mark a scan as cancelled so queued tasks are skipped."""
+        self.cancelled_scans.add(scan_id)
+        if scan_id in self.task_callbacks:
+            del self.task_callbacks[scan_id]
 
 
 # Global queue manager instance

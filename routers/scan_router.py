@@ -1,6 +1,7 @@
 import uuid
 import json
 import asyncio
+from datetime import datetime
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from fastapi.responses import FileResponse, StreamingResponse
 from pathlib import Path
@@ -193,12 +194,35 @@ async def get_scan_progress(uuid: str):
             yield f"data: {json.dumps(progress_data)}\n\n"
 
             # If completed or failed, stop streaming
-            if scan_updated.status in [ScanStatus.COMPLETED, ScanStatus.FAILED]:
+            if scan_updated.status in [ScanStatus.COMPLETED, ScanStatus.FAILED, ScanStatus.STOPPED]:
                 break
 
             await asyncio.sleep(1)
 
     return StreamingResponse(progress_stream(), media_type="text/event-stream")
+
+
+@router.post("/{uuid}/cancel", response_model=dict)
+async def cancel_scan(uuid: str):
+    """Cancel a running or queued scan."""
+    try:
+        scan = await Scan.get(id=uuid)
+    except Exception:
+        raise HTTPException(status_code=404, detail="Scan not found")
+
+    if scan.status in [ScanStatus.COMPLETED, ScanStatus.FAILED, ScanStatus.STOPPED]:
+        return {"id": uuid, "status": scan.status, "cancelled": False}
+
+    scan.status = ScanStatus.STOPPED
+    scan.error_message = "Cancelled by user"
+    scan.completed_at = scan.completed_at or datetime.utcnow()
+    await scan.save()
+
+    scan_queue.cancel(uuid)
+    await Scan.clear_lock(uuid)
+
+    logger.info(f"Cancelled scan {uuid}")
+    return {"id": uuid, "status": ScanStatus.STOPPED, "cancelled": True}
 
 
 @router.get("/{uuid}/output", response_model=ScanOutputResponse)

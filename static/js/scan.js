@@ -47,8 +47,9 @@ export function listenToScanStatus(scanId) {
     });
     setSidebarDot(scanId, data.status);
 
-    if (data.status === 'running' || data.status === 'completed') {
-      document.getElementById('detailStatus').textContent = data.status === 'running' ? 'Running' : 'Completed';
+    if (data.status === 'running' || data.status === 'completed' || data.status === 'stopped') {
+      const statusText = data.status === 'running' ? 'Running' : data.status === 'completed' ? 'Completed' : 'Stopped';
+      document.getElementById('detailStatus').textContent = statusText;
       document.getElementById('detailTotalRanges').textContent = data.total_ranges ?? '—';
       document.getElementById('detailCompletedRanges').textContent = data.completed_ranges ?? '—';
       document.getElementById('detailTotalHosts').textContent = data.total_hosts ?? '—';
@@ -57,13 +58,20 @@ export function listenToScanStatus(scanId) {
       document.getElementById('detailProgressPct').textContent = `${data.progress_percent ?? 0}%`;
     }
 
-    if (data.status === 'completed' || data.status === 'failed') {
+    const isActive = data.status === 'running' || data.status === 'pending';
+    state.scanning = isActive;
+    document.getElementById('startBtn').disabled = isActive;
+    document.getElementById('stopBtn').classList.toggle('hidden', !isActive);
+
+    if (data.status === 'completed' || data.status === 'failed' || data.status === 'stopped') {
       state.eventSource.close();
       if (data.status === 'completed') {
         fetchScanResults(scanId).then(() => {
           renderResults();
           showResultsTableView();
         });
+      } else {
+        showConfigView();
       }
       loadScanHistory();
     }
@@ -96,7 +104,15 @@ export async function loadScan(id) {
     progressPercent: scan.progress_percent,
   });
   showScanningView(scan);
-  listenToScanStatus(id);
+
+  const isActive = scan.status === 'running' || scan.status === 'pending';
+  state.scanning = isActive;
+  document.getElementById('startBtn').disabled = isActive;
+  document.getElementById('stopBtn').classList.toggle('hidden', !isActive);
+
+  if (isActive) {
+    listenToScanStatus(id);
+  }
 
   if (scan.status === 'completed') {
     await fetchScanResults(id);
@@ -246,18 +262,36 @@ export async function startScan() {
   }
 }
 
-export function stopScan() {
-  state.scanning = false;
+export async function stopScan() {
+  if (!state.activeScanId) {
+    state.scanning = false;
+    document.getElementById('startBtn').disabled = false;
+    document.getElementById('stopBtn').classList.add('hidden');
+    document.getElementById('tbMeta').textContent = 'Scan stopped';
+    setChip('stopped');
+    showConfigView();
+    return;
+  }
 
+  try {
+    await fetch(`${API_BASE}/scan/${state.activeScanId}/cancel`, { method: 'POST' });
+  } catch (error) {
+    console.error('Failed to cancel scan:', error);
+  }
+
+  state.scanning = false;
   if (state.elapsedTimer) clearInterval(state.elapsedTimer);
   if (state.eventSource) state.eventSource.close();
 
   document.getElementById('progressBar').classList.remove('active');
   document.getElementById('startBtn').disabled = false;
   document.getElementById('stopBtn').classList.add('hidden');
+  document.getElementById('detailStatus').textContent = 'Stopped';
   document.getElementById('tbMeta').textContent = 'Scan stopped';
   setChip('stopped');
   showConfigView();
+
+  await loadScanHistory();
 }
 
 export function exportCSV() {

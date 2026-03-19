@@ -9,6 +9,7 @@ class ScanStatusSchema(str, Enum):
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
+    STOPPED = "stopped"
 
 
 class ScanCreateRequest(BaseModel):

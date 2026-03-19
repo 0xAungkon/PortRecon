@@ -12,6 +12,10 @@ from fastapi import UploadFile
 from models.scan import Scan, ScanStatus
 
 
+class ScanCancelledError(Exception):
+    pass
+
+
 async def parse_range(cidr_range: str) -> str:
     """
     Parse IP range in 'START-END' notation.
@@ -202,6 +206,11 @@ async def run_scan(scan: Scan, max_workers: int = 16) -> None:
     csv_file.parent.mkdir(parents=True, exist_ok=True)
 
     try:
+        latest_scan = await Scan.get(id=scan.id)
+        if latest_scan.status == ScanStatus.STOPPED:
+            logger.info(f"Scan {scan.id} was cancelled before start")
+            return
+
         raw_ranges = [r.strip() for r in scan.ip_range.split(",") if r.strip()]
         targets = await get_targets_from_range(scan.ip_range)
 
@@ -233,9 +242,19 @@ async def run_scan(scan: Scan, max_workers: int = 16) -> None:
 
         async def scan_with_progress(target: str, hosts_in_target: int) -> None:
             nonlocal completed_ranges
+
+            latest = await Scan.get(id=scan.id)
+            if latest.status == ScanStatus.STOPPED:
+                raise ScanCancelledError("Scan cancelled by user")
+
             host_count, results, success = await asyncio.to_thread(
                 scan_target, target, scan.ports, scan.retries
             )
+
+            latest = await Scan.get(id=scan.id)
+            if latest.status == ScanStatus.STOPPED:
+                raise ScanCancelledError("Scan cancelled by user")
+
             all_results.extend(results)
 
             completed_ranges += 1
@@ -287,6 +306,13 @@ async def run_scan(scan: Scan, max_workers: int = 16) -> None:
         scan.progress_percent = 100 if scan.total_ranges else 0
         await scan.save()
         logger.info(f"Completed scan {scan.id}")
+
+    except ScanCancelledError:
+        logger.info(f"Scan {scan.id} cancelled")
+        scan.status = ScanStatus.STOPPED
+        scan.error_message = "Cancelled by user"
+        scan.completed_at = datetime.utcnow()
+        await scan.save()
 
     except Exception as e:
         logger.error(f"Scan {scan.id} failed: {e}")
